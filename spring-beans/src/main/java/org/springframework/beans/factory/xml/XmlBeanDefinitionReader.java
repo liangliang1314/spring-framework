@@ -264,6 +264,9 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	/**
 	 * Return the EntityResolver to use, building a default resolver
 	 * if none specified.
+	 * 解析器
+	 * 返回指定的解析器，如果没有指定，则构造一个未指定的默认解析器。
+	 * EntityResolver通过实现它，应用可以自定义如何寻找【验证文件】的逻辑
 	 */
 	protected EntityResolver getEntityResolver() {
 		if (this.entityResolver == null) {
@@ -452,6 +455,13 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * @see DocumentLoader#loadDocument
 	 */
 	protected Document doLoadDocument(InputSource inputSource, Resource resource) throws Exception {
+		/**
+		 * inputSource:加载 Document 的 Resource 资源
+		 * getEntityResolver():解析文件的解析器ResourceLoader
+		 * errorHandler:解析过程异常处理器
+		 * getValidationModeForResource:验证模式
+		 * namespaceAware:命名空间支持。如果要提供对XML名称空间的支持，则需要值为 true
+		 */
 		return this.documentLoader.loadDocument(inputSource, getEntityResolver(), this.errorHandler,
 				getValidationModeForResource(resource), isNamespaceAware());
 	}
