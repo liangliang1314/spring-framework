@@ -39,10 +39,19 @@ import org.springframework.util.StringUtils;
  */
 public class BeanDefinitionHolder implements BeanMetadataElement {
 
+	/**
+	 * BeanDefinition 对象
+	 */
 	private final BeanDefinition beanDefinition;
 
+	/**
+	 * Bean 名字
+	 */
 	private final String beanName;
 
+	/**
+	 * 别名集合
+	 */
 	@Nullable
 	private final String[] aliases;
 
@@ -65,8 +74,11 @@ public class BeanDefinitionHolder implements BeanMetadataElement {
 	public BeanDefinitionHolder(BeanDefinition beanDefinition, String beanName, @Nullable String[] aliases) {
 		Assert.notNull(beanDefinition, "BeanDefinition must not be null");
 		Assert.notNull(beanName, "Bean name must not be null");
+		// BeanDefinition 对象
 		this.beanDefinition = beanDefinition;
+		// Bean 名字
 		this.beanName = beanName;
+		// 别名集合
 		this.aliases = aliases;
 	}
 

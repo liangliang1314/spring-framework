@@ -61,6 +61,7 @@ public abstract class BeanDefinitionReaderUtils {
 		bd.setParentName(parentName);
 		if (className != null) {
 			if (classLoader != null) {
+				// 加载类
 				bd.setBeanClass(ClassUtils.forName(className, classLoader));
 			}
 			else {

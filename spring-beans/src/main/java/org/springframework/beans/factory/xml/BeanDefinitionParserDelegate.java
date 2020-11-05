@@ -237,6 +237,7 @@ public class BeanDefinitionParserDelegate {
 	 * Stores all used bean names so we can enforce uniqueness on a per
 	 * beans-element basis. Duplicate bean ids/names may not exist within the
 	 * same level of beans element nesting, but may be duplicated across levels.
+	 * 使用的bean name集合
 	 */
 	private final Set<String> usedNames = new HashSet<>();
 
@@ -406,21 +407,26 @@ public class BeanDefinitionParserDelegate {
 	}
 
 	/**
+	 * 进行 <bean> 元素解析
+	 *
 	 * Parses the supplied {@code <bean>} element. May return {@code null}
 	 * if there were errors during parse. Errors are reported to the
 	 * {@link org.springframework.beans.factory.parsing.ProblemReporter}.
 	 */
 	@Nullable
 	public BeanDefinitionHolder parseBeanDefinitionElement(Element ele, @Nullable BeanDefinition containingBean) {
+		// <1> 解析 id 和 name 属性
 		String id = ele.getAttribute(ID_ATTRIBUTE);
 		String nameAttr = ele.getAttribute(NAME_ATTRIBUTE);
 
+		// 别名
 		List<String> aliases = new ArrayList<>();
 		if (StringUtils.hasLength(nameAttr)) {
 			String[] nameArr = StringUtils.tokenizeToStringArray(nameAttr, MULTI_VALUE_ATTRIBUTE_DELIMITERS);
 			aliases.addAll(Arrays.asList(nameArr));
 		}
 
+		// <2>beanName,优先使用 id
 		String beanName = id;
 		if (!StringUtils.hasText(beanName) && !aliases.isEmpty()) {
 			beanName = aliases.remove(0);
@@ -431,9 +437,11 @@ public class BeanDefinitionParserDelegate {
 		}
 
 		if (containingBean == null) {
+			// <3>检查 beanName 的唯一性
 			checkNameUniqueness(beanName, aliases, ele);
 		}
 
+		// <4> 解析属性，构造 AbstractBeanDefinition 对象
 		AbstractBeanDefinition beanDefinition = parseBeanDefinitionElement(ele, beanName, containingBean);
 		if (beanDefinition != null) {
 			if (!StringUtils.hasText(beanName)) {
@@ -465,6 +473,7 @@ public class BeanDefinitionParserDelegate {
 				}
 			}
 			String[] aliasesArray = StringUtils.toStringArray(aliases);
+			// <5> 创建 BeanDefinitionHolder 对象
 			return new BeanDefinitionHolder(beanDefinition, beanName, aliasesArray);
 		}
 
@@ -501,28 +510,41 @@ public class BeanDefinitionParserDelegate {
 			Element ele, String beanName, @Nullable BeanDefinition containingBean) {
 
 		this.parseState.push(new BeanEntry(beanName));
-
+		// 解析 class 属性
 		String className = null;
 		if (ele.hasAttribute(CLASS_ATTRIBUTE)) {
 			className = ele.getAttribute(CLASS_ATTRIBUTE).trim();
 		}
+		// 解析 parent 属性
 		String parent = null;
 		if (ele.hasAttribute(PARENT_ATTRIBUTE)) {
 			parent = ele.getAttribute(PARENT_ATTRIBUTE);
 		}
 
 		try {
+			// 创建AbstractBeanDefinition实列
 			AbstractBeanDefinition bd = createBeanDefinition(className, parent);
 
+			// 解析BeanDefinition的属性
 			parseBeanDefinitionAttributes(ele, beanName, containingBean, bd);
+			// 提取 description
 			bd.setDescription(DomUtils.getChildElementValueByTagName(ele, DESCRIPTION_ELEMENT));
 
-			parseMetaElements(ele, bd);
-			parseLookupOverrideSubElements(ele, bd.getMethodOverrides());
-			parseReplacedMethodSubElements(ele, bd.getMethodOverrides());
+			// tips:
+			// 下面的一堆是解析 <bean>......</bean> 内部的子元素，
+			// 解析出来以后的信息都放到 AbstractBeanDefinition 的属性中
 
+			// 解析元数据 <meta />
+			parseMetaElements(ele, bd);
+			// 解析 lookup-method 属性 <lookup-method />
+			parseLookupOverrideSubElements(ele, bd.getMethodOverrides());
+			// 解析 replaced-method 属性 <replaced-method />
+			parseReplacedMethodSubElements(ele, bd.getMethodOverrides());
+			// 解析构造函数参数 <constructor-arg />
 			parseConstructorArgElements(ele, bd);
+			// 解析 property 子元素 <property />
 			parsePropertyElements(ele, bd);
+			// 解析 qualifier 子元素 <qualifier />
 			parseQualifierElements(ele, bd);
 
 			bd.setResource(this.readerContext.getResource());
