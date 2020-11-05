@@ -342,6 +342,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 		// 则抛出 BeanDefinitionStoreException 异常。
 		// why? 避免一个 EncodedResource 在加载时，还没加载完成，又加载自身，从而导致死循环。Detected cyclic loading
 		if (!currentResources.add(encodedResource)) {
+			// 检测到循环加载某个Resource，需要检查导入的definitions
 			throw new BeanDefinitionStoreException(
 					"Detected cyclic loading of " + encodedResource + " - check your import definitions!");
 		}
