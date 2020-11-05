@@ -1627,6 +1627,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	}
 
 	/**
+	 * 检查这个工厂的bean创建阶段是否已经开始，也就是说，在此期间是否有任何bean被标记为created。
 	 * Check whether this factory's bean creation phase already started,
 	 * i.e. whether any bean has been marked as created in the meantime.
 	 * @since 4.2.2
