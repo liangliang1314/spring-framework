@@ -141,6 +141,10 @@ public class ClassPathXmlApplicationContext extends AbstractXmlApplicationContex
 		super(parent);
 		setConfigLocations(configLocations);
 		if (refresh) {
+			/**
+			 * 为什么是 refresh()，而不是 init() 这种名字的方法。因为 ApplicationContext 建立起来以后，
+			 * 其实我们是可以通过调用 refresh() 这个方法重建的，refresh() 会将原来的 ApplicationContext 销毁，然后再重新执行一次初始化操作
+			 */
 			refresh();
 		}
 	}
