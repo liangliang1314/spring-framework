@@ -943,10 +943,11 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			this.beanDefinitionMap.put(beanName, beanDefinition);
 		}
 		else {
-			// 检测创建 Bean 阶段是否已经开启，如果开启了则需要对 beanDefinitionMap 进行并发控制
+			// 判断是否已经有其他的 Bean 开始初始化了.
+			// 注意，"注册Bean" 这个动作结束，Bean 依然还没有初始化
+			// 在 Spring 容器启动的最后，会 预初始化 所有的 singleton beans
 			if (hasBeanCreationStarted()) {
 				// Cannot modify startup-time collection elements anymore (for stable iteration)
-				// beanDefinitionMap 为全局变量，避免并发情况
 				synchronized (this.beanDefinitionMap) {
 					// 添加到 BeanDefinition 到 beanDefinitionMap 中。
 					this.beanDefinitionMap.put(beanName, beanDefinition);
@@ -960,8 +961,10 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				}
 			}
 			else {
+				// todo 最正常的应该是进到这个分支。
+
 				// Still in startup registration phase
-				// 添加到 BeanDefinition 到 beanDefinitionMap 中。
+				// todo 将 BeanDefinition 放到这个 map 中，这个 map 保存了所有的 BeanDefinition
 				this.beanDefinitionMap.put(beanName, beanDefinition);
 
 				// 添加 beanName 到 beanDefinitionNames 中
@@ -971,7 +974,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			this.frozenBeanDefinitionNames = null;
 		}
 
-		if (existingDefinition != null || containsSingleton(beanName)) {
+		if (existingDefinition != null || containsSingleton(beanName)) {a
 			// 若缓存中存在该 beanName 或者单例 bean 集合中存在该 beanName ，
 			// 则调用 #resetBeanDefinition(String beanName) 方法，重置 BeanDefinition 缓存。
 			resetBeanDefinition(beanName);

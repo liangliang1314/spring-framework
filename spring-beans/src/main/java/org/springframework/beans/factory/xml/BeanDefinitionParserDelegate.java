@@ -440,7 +440,7 @@ public class BeanDefinitionParserDelegate {
 			checkNameUniqueness(beanName, aliases, ele);
 		}
 
-		// <4> 解析属性，构造 AbstractBeanDefinition 对象
+		// <4> 解析属性，BeanDefinition 实例就出来了。
 		AbstractBeanDefinition beanDefinition = parseBeanDefinitionElement(ele, beanName, containingBean);
 		if (beanDefinition != null) {
 			if (!StringUtils.hasText(beanName)) {
@@ -519,7 +519,7 @@ public class BeanDefinitionParserDelegate {
 		}
 
 		try {
-			// 创建AbstractBeanDefinition实列
+			// 创建BeanDefinition实列信息
 			/**
 			 * BeanDefinition 通常有三个实现类
 			 * 1:org.springframework.beans.factory.support.ChildBeanDefinition

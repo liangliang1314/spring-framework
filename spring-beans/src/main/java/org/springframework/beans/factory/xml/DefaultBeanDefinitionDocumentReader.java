@@ -94,6 +94,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	public void registerBeanDefinitions(Document doc, XmlReaderContext readerContext) {
 		this.readerContext = readerContext;
 		// 获得XML Document Root Element(doc.getDocumentElement()),并执行注册 BeanDefinition
+		// 从 xml 根节点开始解析文件
 		doRegisterBeanDefinitions(doc.getDocumentElement());
 	}
 
@@ -127,7 +128,11 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		// the new (child) delegate with a reference to the parent for fallback purposes,
 		// then ultimately reset this.delegate back to its original (parent) reference.
 		// this behavior emulates a stack of delegates without actually necessitating one.
-		// 记录老的 BeanDefinitionParserDelegate 对象
+
+		// 我们看名字就知道，BeanDefinitionParserDelegate 必定是一个重要的类，它负责解析 Bean 定义，
+		// 这里为什么要定义一个 parent? 看到后面就知道了，是递归问题，
+		// 因为 <beans /> 内部是可以定义 <beans /> 的，所以这个方法的 root 其实不一定就是 xml 的根节点，也可以是嵌套在里面的 <beans /> 节点，
+		// 从源码分析的角度，我们当做根节点就好了
 		BeanDefinitionParserDelegate parent = this.delegate;
 		// 创建 BeanDefinitionParserDelegate 对象，并进行设置到 delegate
 		this.delegate = createDelegate(getReaderContext(), root, parent);
@@ -152,10 +157,10 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 			}
 		}
 
-		// todo 目前前置处理，后置处理是空实现。
+
 		// 解析前处理(前置处理)
 		preProcessXml(root);
-		// 解析
+		// todo 重点解析
 		parseBeanDefinitions(root, this.delegate);
 		// 解析后处理(后置处理)
 		postProcessXml(root);
@@ -192,9 +197,16 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 					Element ele = (Element) node;
 					// 如果该节点使用默认命名空间，执行默认解析
 					if (delegate.isDefaultNamespace(ele)) {
+						/**
+						 * parseDefaultElement(ele, delegate) 代表解析的节点是 <import />、<alias />、<bean />、<beans /> 这几个。
+						 */
 						parseDefaultElement(ele, delegate);
 					} else {
 						// 如果该节点非默认命名空间，执行自定义解析
+						/**
+						 * 而对于其他的标签，将进入到 delegate.parseCustomElement(element) 这个分支。
+						 * 如我们经常会使用到的 <mvc />、<task />、<context />、<aop />等
+						 */
 						delegate.parseCustomElement(ele);
 					}
 				}
@@ -239,7 +251,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		else if (delegate.nodeNameEquals(ele, ALIAS_ELEMENT)) {
 			processAliasRegistration(ele);
 		}
-		// 解析bean
+		// todo 重点解析bean
 		else if (delegate.nodeNameEquals(ele, BEAN_ELEMENT)) {
 			processBeanDefinition(ele, delegate);
 		}
@@ -357,16 +369,15 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	 * and registering it with the registry.
 	 */
 	protected void processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate) {
-		// 进行 bean 元素解析。
-		// <1> 如果解析成功，则返回 BeanDefinitionHolder 对象。而 BeanDefinitionHolder 为 name 和 alias 的 BeanDefinition 对象
-		// 如果解析失败，则返回 null 。
+		// 将 <bean /> 节点中的信息提取出来，将BeanDefinition 然后封装到一个 BeanDefinitionHolder 中
+		// 这个实例（BeanDefinitionHolder）里面也就是一个 BeanDefinition 的实例和它的 beanName、aliases 这三个信息
 		BeanDefinitionHolder bdHolder = delegate.parseBeanDefinitionElement(ele);
 		if (bdHolder != null) {
 			// <2> 进行自定义标签处理
 			bdHolder = delegate.decorateBeanDefinitionIfRequired(ele, bdHolder);
 			try {
 				// Register the final decorated instance.
-				// <3> 进行 BeanDefinition 的注册
+				// todo <3> 进行 BeanDefinition 的注册
 				BeanDefinitionReaderUtils.registerBeanDefinition(bdHolder, getReaderContext().getRegistry());
 			} catch (BeanDefinitionStoreException ex) {
 				getReaderContext().error("Failed to register bean definition with name '" +
