@@ -19,6 +19,9 @@ package org.aopalliance.intercept;
 import java.lang.reflect.Method;
 
 /**
+ *
+ * todo 方法调用接口 MethodInvocation 继承自 Invocation，Invocation 接口又继承自 Joinpoint
+ *
  * Description of an invocation to a method, given to an interceptor
  * upon method-call.
  *

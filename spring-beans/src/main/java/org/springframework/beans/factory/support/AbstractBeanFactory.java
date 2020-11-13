@@ -245,18 +245,23 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * not for actual use
 	 * @return an instance of the bean
 	 * @throws BeansException if the bean could not be created
+	 *
+	 *
+	 * 我们在剖析初始化 Bean 的过程，但是 getBean 方法我们经常是用来从容器中获取 Bean 用的，注意切换思路，
+	 * 已经初始化过了就从容器中直接返回，否则就先初始化再返回
 	 */
 	@SuppressWarnings("unchecked")
 	protected <T> T doGetBean(
 			String name, @Nullable Class<T> requiredType, @Nullable Object[] args, boolean typeCheckOnly)
 			throws BeansException {
-		// <1> 获取bean的名称
-		// 如果 name 是 alias ，则获取对应映射的 beanName 。
+		// 获取一个 “正统的” beanName，处理两种情况，一个是前面说的 FactoryBean(前面带 ‘&’)，
+		// 一个是别名问题，因为这个方法是 getBean，获取 Bean 用的，你要是传一个别名进来，是完全可以的
 		String beanName = transformedBeanName(name);
+
 		Object bean;
 
 		// Eagerly check singleton cache for manually registered singletons.
-		//  从缓存中或者实例工厂中获取 Bean 对象
+		// 检查下是不是已经创建过了（从缓存中获取）
 		Object sharedInstance = getSingleton(beanName);
 		if (sharedInstance != null && args == null) {
 			if (logger.isTraceEnabled()) {
@@ -312,12 +317,12 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			}
 
 			// Check if bean definition exists in this factory.
-			// <4> 如果容器中没有找到，则从父类容器中加载
+			// <4> 检查一下这个 BeanDefinition 在容器中是否存在
 			BeanFactory parentBeanFactory = getParentBeanFactory();
 			// parentBeanFactory 不为空且 beanDefinitionMap 中不存该 name 的 BeanDefinition
 			if (parentBeanFactory != null && !containsBeanDefinition(beanName)) {
 				// Not found -> check parent.
-				// bean name 确认
+				// 如果当前容器不存在这个 BeanDefinition，试试父容器中有没有
 				String nameToLookup = originalBeanName(name);
 				// 如果父类容器为 AbstractBeanFactory ，直接递归查找doGetBean()
 				if (parentBeanFactory instanceof AbstractBeanFactory) {
@@ -342,6 +347,12 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				// 将指定的bean标记为已经创建(或将要创建)
 				markBeanAsCreated(beanName);
 			}
+			/**
+			 * todo 重点！！！重点！！！重点！！！
+			 * 稍稍总结一下：
+			 * 到这里的话，要准备创建 Bean 了，对于 singleton 的 Bean 来说，容器中还没创建过此 Bean；
+			 * 对于 prototype 的 Bean 来说，本来就是要创建一个新的 Bean。
+			 */
 
 			try {
 				// <6> 从容器中获取 beanName 相应的 GenericBeanDefinition 对象，并将其转换为 RootBeanDefinition 对象
@@ -354,17 +365,11 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				checkMergedBeanDefinition(mbd, beanName, args);
 
 				// Guarantee initialization of beans that the current bean depends on.
-				// <7> 处理所依赖的 bean
+				// 先初始化依赖的所有 Bean，这个很好理解。
+				// 注意，这里的依赖指的是 depends-on 中定义的依赖
 				String[] dependsOn = mbd.getDependsOn();
 				if (dependsOn != null) {
 					for (String dep : dependsOn) {
-						// 若给定的依赖 bean 已经注册为依赖给定的 bean
-						// 循环依赖的情况
-						/**
-						 * 每个 Bean 都不是单独工作的，它会依赖其他 Bean，其他 Bean 也会依赖它。
-						 * 对于依赖的 Bean ，它会优先加载，所以，在 Spring 的加载顺序中，在初始化某一个 Bean 的时候，首先会初始化这个 Bean 的依赖
-						 * isDependent(beanName, dep)：校验该依赖是否已经注册给当前 Bean
-						 */
 						if (isDependent(beanName, dep)) {
 							throw new BeanCreationException(mbd.getResourceDescription(), beanName,
 									"Circular depends-on relationship between '" + beanName + "' and '" + dep + "'");
@@ -384,10 +389,12 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 
 				// Create bean instance.
 				// <8> bean 实例化
+				// 如果是 singleton scope 的，创建 singleton 的实例
 				if (mbd.isSingleton()) {  // 单例模式
 					// getSingleton(),匿名实现了ObjectFactory接口，createBean(),创建bean
 					sharedInstance = getSingleton(beanName, () -> {
 						try {
+							// todo 重点！！！重点！！！重点！！！
 							return createBean(beanName, mbd, args);
 						}
 						catch (BeansException ex) {
@@ -404,6 +411,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 					bean = getObjectForBeanInstance(sharedInstance, name, beanName, mbd);
 				}
 
+				// 如果是 prototype scope 的，创建 prototype 的实例
 				else if (mbd.isPrototype()) { // 原型模式
 					// It's a prototype -> create a new instance.
 					Object prototypeInstance = null;
@@ -421,6 +429,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 					bean = getObjectForBeanInstance(prototypeInstance, name, beanName, mbd);
 				}
 
+				// 如果不是 singleton 和 prototype 的话，需要委托给相应的实现类来处理
 				else {
 					// 从指定的 scope 下创建 bean
 					String scopeName = mbd.getScope();
@@ -463,7 +472,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		}
 
 		// Check if required type matches the type of the actual bean instance.
-		// <9> 检查需要的类型是否符合 bean 的实际类型
+		// <9> 最后，检查一下类型对不对，不对的话就抛异常，对的话就返回了
 		if (requiredType != null && !requiredType.isInstance(bean)) {
 			try {
 				T convertedBean = getTypeConverter().convertIfNecessary(bean, requiredType);
